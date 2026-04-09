@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<!--
+  HUMAN NEURAL NETWORK — Classroom Activity App
+  ================================================
+  HOW TO RUN:
+  1. Open this file in any modern browser (Chrome, Safari, Firefox)
+  2. Works on iPad (touch-enabled) and laptop
+  3. No internet connection required — fully self-contained
+  4. Pass the device between students each turn
+
+  ACTIVITY FLOW:
+  - Click "Start Session" to begin
+  - Each student spins their rule, draws, then ends their turn
+  - The history strip shows every node's transformation
+  - Click any thumbnail to review it (read-only)
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Human Neural Network</title>
+<style>
+  /* ─── Reset & Base ─── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #1a1a2e;
+    color: #f0f0f0;
+    height: 100dvh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ─── Screens ─── */
+  .screen { display: none; flex-direction: column; height: 100dvh; }
+  .screen.active { display: flex; }
+
+  /* ─── Start Screen ─── */
+  #start-screen {
+    align-items: center;
+    justify-content: center;
+    gap: 2rem;
+    background: #1a1a2e;
+    text-align: center;
+    padding: 2rem;
+  }
+
+  .app-title {
+    font-size: clamp(2rem, 6vw, 3.5rem);
+    font-weight: 700;
+    letter-spacing: -1px;
+    color: #fff;
+    line-height: 1.1;
+  }
+
+  .app-subtitle {
+    font-size: clamp(1rem, 2.5vw, 1.25rem);
+    color: #9090b0;
+    max-width: 480px;
+  }
+
+  .network-graphic {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 1rem 0;
+  }
+
+  .node-dot {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    background: #16213e;
+    border: 2px solid #4a4aff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #9090cc;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  .node-dot:nth-child(2) { animation-delay: 0.3s; border-color: #7c4aff; }
+  .node-dot:nth-child(4) { animation-delay: 0.6s; border-color: #4aafff; }
+  .node-dot:nth-child(6) { animation-delay: 0.9s; border-color: #4affb8; }
+
+  .node-arrow { color: #4a4a7a; font-size: 1.5rem; }
+
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(74, 74, 255, 0.4); }
+    50% { box-shadow: 0 0 0 8px rgba(74, 74, 255, 0); }
+  }
+
+  /* ─── Buttons ─── */
+  .btn {
+    border: none; cursor: pointer;
+    font-family: inherit;
+    font-weight: 600;
+    border-radius: 12px;
+    transition: transform 0.1s, opacity 0.1s;
+    touch-action: manipulation;
+  }
+
+  .btn:active { transform: scale(0.97); }
+
+  .btn-primary {
+    background: #4a4aff;
+    color: #fff;
+    font-size: clamp(1rem, 3vw, 1.25rem);
+    padding: 1rem 2.5rem;
+    min-height: 56px;
+  }
+
+  .btn-primary:hover { background: #6060ff; }
+
+  .btn-danger {
+    background: #ff4a4a;
+    color: #fff;
+    font-size: 1rem;
+    padding: 0.75rem 1.5rem;
+    min-height: 48px;
+  }
+
+  .btn-success {
+    background: #4aff98;
+    color: #0a2010;
+    font-size: clamp(1rem, 2.5vw, 1.15rem);
+    padding: 0.85rem 1.75rem;
+    min-height: 52px;
+  }
+
+  .btn-spin {
+    background: linear-gradient(135deg, #7c4aff, #4a4aff);
+    color: #fff;
+    font-size: clamp(1rem, 2.5vw, 1.15rem);
+    padding: 0.85rem 1.75rem;
+    min-height: 52px;
+  }
+
+  .btn-spin:hover { opacity: 0.9; }
+
+  .btn-ghost {
+    background: transparent;
+    color: #9090b0;
+    border: 1.5px solid #333360;
+    font-size: 0.875rem;
+    padding: 0.6rem 1.25rem;
+    min-height: 40px;
+  }
+
+  .btn-ghost:hover { border-color: #5555aa; color: #c0c0e0; }
+
+  /* ─── Main Game Layout ─── */
+  #game-screen { background: #1a1a2e; }
+
+  .top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 1rem;
+    background: #12122a;
+    border-bottom: 1px solid #2a2a4a;
+    gap: 0.75rem;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+
+  .node-badge {
+    background: #4a4aff;
+    color: #fff;
+    font-size: 1.1rem;
+    font-weight: 700;
+    padding: 0.4rem 1rem;
+    border-radius: 8px;
+    white-space: nowrap;
+  }
+
+  /* ─── Timer ─── */
+  .timer-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .timer-display {
+    font-size: 2rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    width: 2.6ch;
+    text-align: right;
+    color: #fff;
+    transition: color 0.3s;
+  }
+
+  .timer-display.urgent { color: #ff4a4a; animation: blink 0.5s step-end infinite; }
+
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  .timer-ring {
+    width: 36px; height: 36px;
+    flex-shrink: 0;
+  }
+
+  .timer-ring circle {
+    fill: none;
+    stroke-width: 3;
+    stroke-linecap: round;
+  }
+
+  .ring-bg { stroke: #2a2a4a; }
+  .ring-fg { stroke: #4a4aff; transition: stroke-dashoffset 1s linear, stroke 0.3s; }
+  .ring-fg.urgent { stroke: #ff4a4a; }
+
+  /* ─── Rule Display ─── */
+  .rule-zone {
+    padding: 0.6rem 1rem;
+    background: #16163a;
+    border-bottom: 1px solid #2a2a4a;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-shrink: 0;
+    min-height: 64px;
+  }
+
+  .rule-label {
+    font-size: 0.75rem;
+    color: #6060a0;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .rule-text {
+    flex: 1;
+    font-size: clamp(1.1rem, 3vw, 1.5rem);
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.02em;
+    transition: transform 0.15s, opacity 0.15s;
+  }
+
+  .rule-desc {
+    font-size: 0.8rem;
+    color: #8080aa;
+    margin-top: 2px;
+  }
+
+  .rule-text.spinning {
+    animation: spinText 0.5s ease-in-out;
+  }
+
+  @keyframes spinText {
+    0% { transform: translateY(-8px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+  }
+
+  /* ─── Canvas Area ─── */
+  .canvas-wrap {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: #fff;
+    cursor: crosshair;
+  }
+
+  #main-canvas { display: block; }
+
+  /* ─── Ghost layer toggle ─── */
+  #ghost-canvas {
+    position: absolute;
+    top: 0; left: 0;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  #ghost-canvas.visible { opacity: 0.18; }
+
+  /* ─── Bottom Bar ─── */
+  .bottom-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 1rem;
+    background: #12122a;
+    border-top: 1px solid #2a2a4a;
+    gap: 0.75rem;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+
+  .tool-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .size-btn {
+    border: 2px solid #2a2a4a;
+    background: #1a1a3a;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.15s;
+    touch-action: manipulation;
+    flex-shrink: 0;
+  }
+
+  .size-btn.active { border-color: #4a4aff; background: #25254a; }
+
+  .size-dot { background: #fff; border-radius: 50%; }
+
+  /* size button dimensions */
+  .size-btn.sm { width: 36px; height: 36px; }
+  .size-btn.md { width: 44px; height: 44px; }
+  .size-btn.lg { width: 52px; height: 52px; }
+  .size-dot.sm { width: 5px; height: 5px; }
+  .size-dot.md { width: 10px; height: 10px; }
+  .size-dot.lg { width: 18px; height: 18px; }
+
+  .color-picker-wrap {
+    position: relative;
+  }
+
+  #color-input {
+    width: 36px; height: 36px;
+    border: 2px solid #2a2a4a;
+    border-radius: 8px;
+    background: none;
+    cursor: pointer;
+    padding: 2px;
+  }
+
+  .tool-divider { width: 1px; height: 32px; background: #2a2a4a; flex-shrink: 0; }
+
+  .eraser-btn {
+    background: #1a1a3a;
+    border: 2px solid #2a2a4a;
+    color: #fff;
+    font-size: 0.8rem;
+    padding: 0.4rem 0.75rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+    touch-action: manipulation;
+  }
+
+  .eraser-btn.active { border-color: #ff9a4a; background: #2a1a10; color: #ff9a4a; }
+
+  /* ─── History Strip ─── */
+  .history-strip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 1rem;
+    background: #0e0e1f;
+    border-top: 1px solid #2a2a4a;
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-shrink: 0;
+    min-height: 80px;
+    max-height: 80px;
+    scrollbar-width: thin;
+    scrollbar-color: #2a2a4a transparent;
+  }
+
+  .history-strip::-webkit-scrollbar { height: 4px; }
+  .history-strip::-webkit-scrollbar-track { background: transparent; }
+  .history-strip::-webkit-scrollbar-thumb { background: #2a2a4a; border-radius: 2px; }
+
+  .history-empty {
+    color: #3a3a6a;
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+
+  .snap-thumb {
+    flex-shrink: 0;
+    width: 56px; height: 56px;
+    border-radius: 6px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    object-fit: cover;
+    transition: border-color 0.15s, transform 0.15s;
+    background: #fff;
+  }
+
+  .snap-thumb:hover { border-color: #4a4aff; transform: scale(1.05); }
+
+  .snap-container { position: relative; flex-shrink: 0; }
+
+  .snap-label {
+    position: absolute;
+    bottom: 2px;
+    left: 0; right: 0;
+    text-align: center;
+    font-size: 9px;
+    font-weight: 700;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+    pointer-events: none;
+  }
+
+  /* ─── Lightbox / History Viewer ─── */
+  #lightbox {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.88);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.5rem;
+  }
+
+  #lightbox.open { display: flex; }
+
+  .lightbox-img {
+    max-width: 90vw;
+    max-height: 70dvh;
+    border-radius: 8px;
+    border: 2px solid #4a4aff;
+    object-fit: contain;
+    background: #fff;
+  }
+
+  .lightbox-caption {
+    color: #c0c0e0;
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+
+  /* ─── Review Screen ─── */
+  #review-screen {
+    background: #1a1a2e;
+    padding: 1.5rem;
+    overflow-y: auto;
+    gap: 1.5rem;
+    align-items: flex-start;
+  }
+
+  .review-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #fff;
+    align-self: center;
+  }
+
+  .review-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .review-card {
+    background: #12122a;
+    border: 1.5px solid #2a2a4a;
+    border-radius: 12px;
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    width: 160px;
+  }
+
+  .review-card img {
+    width: 140px; height: 140px;
+    border-radius: 6px;
+    border: 1px solid #2a2a4a;
+    background: #fff;
+    object-fit: cover;
+  }
+
+  .review-card-label { font-size: 0.8rem; font-weight: 700; color: #8080cc; }
+  .review-card-rule { font-size: 0.75rem; color: #6060a0; text-align: center; }
+
+  .review-actions {
+    display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; width: 100%;
+  }
+
+  /* ─── Overlay / Ghost toggle pill ─── */
+  .ghost-toggle {
+    background: #1a1a3a;
+    border: 2px solid #2a2a4a;
+    color: #6060a0;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.4rem 0.8rem;
+    border-radius: 8px;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: border-color 0.15s, color 0.15s;
+    white-space: nowrap;
+  }
+
+  .ghost-toggle.on { border-color: #4a4aff; color: #9090ff; }
+
+  /* Responsive: smaller screens tighten up */
+  @media (max-width: 480px) {
+    .btn-success, .btn-spin { font-size: 0.9rem; padding: 0.75rem 1.1rem; }
+    .timer-display { font-size: 1.6rem; }
+    .rule-text { font-size: 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     SCREEN 1: START / WELCOME
+═══════════════════════════════════════════ -->
+<div id="start-screen" class="screen active">
+  <div class="app-title">Human<br>Neural Network</div>
+  <p class="app-subtitle">A classroom drawing activity where each student transforms a shared image — one rule at a time.</p>
+
+  <div class="network-graphic">
+    <div class="node-dot">N1</div>
+    <div class="node-arrow">→</div>
+    <div class="node-dot">N2</div>
+    <div class="node-arrow">→</div>
+    <div class="node-dot">N3</div>
+    <div class="node-arrow">→</div>
+    <div class="node-dot">N4</div>
+  </div>
+
+  <button class="btn btn-primary" onclick="startSession()">Start Session</button>
+
+  <p style="color: #3a3a6a; font-size: 0.8rem; max-width: 360px;">
+    Pass the device between students. Each student spins a rule, draws for 60 seconds, then ends their turn.
+  </p>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     SCREEN 2: GAME / DRAWING
+═══════════════════════════════════════════ -->
+<div id="game-screen" class="screen">
+
+  <!-- Top bar: node label + timer + end turn -->
+  <div class="top-bar">
+    <div id="node-badge" class="node-badge">Node 1</div>
+
+    <div class="timer-wrap">
+      <!-- SVG ring timer -->
+      <svg class="timer-ring" viewBox="0 0 36 36">
+        <circle class="ring-bg" cx="18" cy="18" r="15.9" />
+        <circle id="ring-fg" class="ring-fg" cx="18" cy="18" r="15.9"
+          stroke-dasharray="100 100"
+          stroke-dashoffset="0"
+          transform="rotate(-90 18 18)" />
+      </svg>
+      <div id="timer-display" class="timer-display">60</div>
+    </div>
+
+    <button class="btn btn-success" onclick="endTurn()">End Turn ✓</button>
+  </div>
+
+  <!-- Rule zone -->
+  <div class="rule-zone">
+    <div>
+      <div class="rule-label">Your Rule</div>
+    </div>
+    <div style="flex:1;">
+      <div id="rule-text" class="rule-text" style="color:#3a3a6a;">Spin to get your rule →</div>
+      <div id="rule-desc" class="rule-desc"></div>
+    </div>
+    <button class="btn btn-spin" onclick="spinRule()" id="spin-btn">Spin Rule</button>
+  </div>
+
+  <!-- Drawing canvas -->
+  <div class="canvas-wrap" id="canvas-wrap">
+    <canvas id="main-canvas"></canvas>
+    <canvas id="ghost-canvas"></canvas>
+  </div>
+
+  <!-- Bottom toolbar -->
+  <div class="bottom-bar">
+    <div class="tool-group">
+      <!-- Brush sizes -->
+      <button class="size-btn sm active" onclick="setSize(4, this)" title="Small brush">
+        <div class="size-dot sm"></div>
+      </button>
+      <button class="size-btn md" onclick="setSize(10, this)" title="Medium brush">
+        <div class="size-dot md"></div>
+      </button>
+      <button class="size-btn lg" onclick="setSize(22, this)" title="Large brush">
+        <div class="size-dot lg"></div>
+      </button>
+
+      <div class="tool-divider"></div>
+
+      <!-- Color picker -->
+      <input type="color" id="color-input" value="#000000" title="Brush color"
+        oninput="setColor(this.value)">
+
+      <div class="tool-divider"></div>
+
+      <!-- Eraser -->
+      <button class="eraser-btn" id="eraser-btn" onclick="toggleEraser()" title="Eraser">
+        Erase
+      </button>
+    </div>
+
+    <div class="tool-group">
+      <!-- Ghost layer toggle -->
+      <button class="ghost-toggle" id="ghost-toggle-btn" onclick="toggleGhost()" title="Show previous step faintly">
+        👁 Prev
+      </button>
+
+      <!-- Review all -->
+      <button class="btn btn-ghost" onclick="showReview()">Review All</button>
+
+      <!-- Reset -->
+      <button class="btn btn-danger" onclick="confirmReset()">Reset</button>
+    </div>
+  </div>
+
+  <!-- History strip (thumbnails) -->
+  <div class="history-strip" id="history-strip">
+    <div class="history-empty" id="history-empty">Completed turns will appear here</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     SCREEN 3: REVIEW / GALLERY
+═══════════════════════════════════════════ -->
+<div id="review-screen" class="screen">
+  <div class="review-title">Transformation History</div>
+
+  <div class="review-grid" id="review-grid"></div>
+
+  <div class="review-actions">
+    <button class="btn btn-primary" onclick="showScreen('game-screen')">← Back to Drawing</button>
+    <button class="btn btn-danger" onclick="confirmReset()">Reset Session</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     LIGHTBOX (snapshot viewer)
+═══════════════════════════════════════════ -->
+<div id="lightbox" onclick="closeLightbox()">
+  <div class="lightbox-caption" id="lightbox-caption"></div>
+  <img class="lightbox-img" id="lightbox-img" src="" alt="Snapshot">
+  <p style="color:#5050a0; font-size:0.8rem;">(tap anywhere to close)</p>
+</div>
+
+
+<!-- ═══════════════════════════════════════════
+     JAVASCRIPT
+═══════════════════════════════════════════ -->
+<script>
+
+// ─────────────────────────────────────────────
+// RULES DATA
+// Each rule has a short name and a one-line prompt
+// ─────────────────────────────────────────────
+const RULES = [
+  { name: "ADD",         desc: "Add a new element to the drawing." },
+  { name: "REMOVE",      desc: "Erase or obscure something that exists." },
+  { name: "ENLARGE",     desc: "Make something bigger or more prominent." },
+  { name: "REDUCE",      desc: "Make something smaller or less prominent." },
+  { name: "FOCUS",       desc: "Emphasize one specific part." },
+  { name: "SIMPLIFY",    desc: "Reduce detail — make it cleaner." },
+  { name: "CLARIFY",     desc: "Make it easier to understand." },
+  { name: "IMPROVE",     desc: "Make the drawing more 'successful'." },
+  { name: "NORMALIZE",   desc: "Make it look more typical or expected." },
+  { name: "3 MARKS ONLY", desc: "You may make exactly 3 marks. No more." },
+];
+
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+let nodeCount     = 0;         // how many turns completed
+let currentRule   = null;      // currently spun rule object
+let snapshots     = [];        // array of { dataURL, nodeNum, ruleName }
+let timerInterval = null;
+let timeLeft      = 60;
+let isErasing     = false;
+let brushSize     = 4;
+let brushColor    = "#000000";
+let isDrawing     = false;
+let lastX         = 0;
+let lastY         = 0;
+let ghostVisible  = false;
+
+// Canvas refs
+let mainCanvas, mainCtx, ghostCanvas;
+
+// ─────────────────────────────────────────────
+// SCREEN MANAGEMENT
+// ─────────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ─────────────────────────────────────────────
+// SESSION START
+// ─────────────────────────────────────────────
+function startSession() {
+  nodeCount = 0;
+  snapshots = [];
+  showScreen('game-screen');
+  initCanvas();
+  beginNextTurn();
+}
+
+// ─────────────────────────────────────────────
+// CANVAS SETUP
+// Resizes canvas to fill its container
+// ─────────────────────────────────────────────
+function initCanvas() {
+  mainCanvas  = document.getElementById('main-canvas');
+  mainCtx     = mainCanvas.getContext('2d');
+  ghostCanvas = document.getElementById('ghost-canvas');
+  const wrap  = document.getElementById('canvas-wrap');
+
+  function resize() {
+    const w = wrap.clientWidth;
+    const h = wrap.clientHeight;
+    // Save current drawing before resize
+    const dataURL = mainCanvas.width > 0 ? mainCanvas.toDataURL() : null;
+    mainCanvas.width  = w;
+    mainCanvas.height = h;
+    ghostCanvas.width  = w;
+    ghostCanvas.height = h;
+    // Restore drawing
+    if (dataURL) {
+      const img = new Image();
+      img.onload = () => mainCtx.drawImage(img, 0, 0, w, h);
+      img.src = dataURL;
+    }
+  }
+
+  resize();
+  window.addEventListener('resize', resize);
+}
+
+// ─────────────────────────────────────────────
+// TURN MANAGEMENT
+// ─────────────────────────────────────────────
+function beginNextTurn() {
+  nodeCount++;
+  currentRule = null;
+
+  // Update node badge
+  document.getElementById('node-badge').textContent = `Node ${nodeCount}`;
+
+  // Reset rule display
+  document.getElementById('rule-text').textContent   = 'Spin to get your rule →';
+  document.getElementById('rule-text').style.color   = '#3a3a6a';
+  document.getElementById('rule-desc').textContent   = '';
+  document.getElementById('spin-btn').disabled       = false;
+
+  // Reset timer
+  resetTimer();
+
+  // Ghost: load last snapshot
+  updateGhost();
+}
+
+function endTurn() {
+  // Save snapshot of current canvas
+  const dataURL = mainCanvas.toDataURL('image/png');
+  snapshots.push({
+    dataURL,
+    nodeNum:  nodeCount,
+    ruleName: currentRule ? currentRule.name : '—',
+  });
+
+  // Stop timer
+  clearInterval(timerInterval);
+
+  // Add thumbnail to history strip
+  addThumbnail(snapshots[snapshots.length - 1]);
+
+  // Begin next turn (does NOT clear canvas — new marks are cumulative)
+  beginNextTurn();
+}
+
+// ─────────────────────────────────────────────
+// RULE SPINNER
+// ─────────────────────────────────────────────
+function spinRule() {
+  const btn = document.getElementById('spin-btn');
+  btn.disabled = true;
+  btn.textContent = '...';
+
+  // Shuffle animation — cycle through rules quickly then land
+  let ticks = 0;
+  const maxTicks = 12;
+  const ruleTextEl = document.getElementById('rule-text');
+  const ruleDescEl = document.getElementById('rule-desc');
+
+  const shuffleInterval = setInterval(() => {
+    const r = RULES[Math.floor(Math.random() * RULES.length)];
+    ruleTextEl.textContent = r.name;
+    ruleTextEl.style.color = '#fff';
+    ticks++;
+
+    if (ticks >= maxTicks) {
+      clearInterval(shuffleInterval);
+
+      // Final selection
+      currentRule = RULES[Math.floor(Math.random() * RULES.length)];
+      ruleTextEl.textContent = currentRule.name;
+      ruleDescEl.textContent = currentRule.desc;
+      ruleTextEl.classList.remove('spinning');
+      void ruleTextEl.offsetWidth; // force reflow
+      ruleTextEl.classList.add('spinning');
+
+      // Color code by rule type
+      const colors = {
+        'ADD': '#4aff98', 'REMOVE': '#ff6b6b', 'ENLARGE': '#ffd94a',
+        'REDUCE': '#4abfff', 'FOCUS': '#ff9a4a', 'SIMPLIFY': '#c84aff',
+        'CLARIFY': '#4aefff', 'IMPROVE': '#98ff4a', 'NORMALIZE': '#ff4ab4',
+        '3 MARKS ONLY': '#ff4a4a',
+      };
+      ruleTextEl.style.color = colors[currentRule.name] || '#fff';
+
+      // Start timer when rule is received
+      startTimer();
+
+      btn.textContent = 'Re-spin';
+      btn.disabled = false;
+    }
+  }, 60); // ~60ms per tick = ~720ms total
+}
+
+// ─────────────────────────────────────────────
+// TIMER
+// ─────────────────────────────────────────────
+function resetTimer() {
+  clearInterval(timerInterval);
+  timeLeft = 60;
+  updateTimerDisplay();
+}
+
+function startTimer() {
+  clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    updateTimerDisplay();
+    if (timeLeft <= 0) {
+      clearInterval(timerInterval);
+      timeUp();
+    }
+  }, 1000);
+}
+
+function updateTimerDisplay() {
+  const el   = document.getElementById('timer-display');
+  const ring = document.getElementById('ring-fg');
+  const pct  = timeLeft / 60;
+
+  el.textContent = timeLeft;
+
+  // Ring: dashoffset goes from 0 (full) to 100 (empty)
+  ring.style.strokeDashoffset = (1 - pct) * 100;
+
+  // Urgency styling
+  const urgent = timeLeft <= 10;
+  el.classList.toggle('urgent', urgent);
+  ring.classList.toggle('urgent', urgent);
+}
+
+function timeUp() {
+  document.getElementById('timer-display').textContent = '0';
+  // Flash the end-turn button to prompt user
+  const btn = document.querySelector('.btn-success');
+  btn.style.animation = 'blink 0.5s step-end 6';
+  setTimeout(() => btn.style.animation = '', 3000);
+}
+
+// ─────────────────────────────────────────────
+// DRAWING TOOLS
+// ─────────────────────────────────────────────
+function setSize(size, btn) {
+  brushSize = size;
+  document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function setColor(color) {
+  brushColor = color;
+  // Switching to a color deactivates eraser
+  if (isErasing) toggleEraser();
+}
+
+function toggleEraser() {
+  isErasing = !isErasing;
+  document.getElementById('eraser-btn').classList.toggle('active', isErasing);
+}
+
+// ─────────────────────────────────────────────
+// CANVAS DRAWING EVENTS
+// Supports mouse and touch (iPad)
+// ─────────────────────────────────────────────
+function getPos(e) {
+  const rect = mainCanvas.getBoundingClientRect();
+  // Touch event
+  if (e.touches && e.touches.length > 0) {
+    return {
+      x: e.touches[0].clientX - rect.left,
+      y: e.touches[0].clientY - rect.top,
+    };
+  }
+  return {
+    x: e.clientX - rect.left,
+    y: e.clientY - rect.top,
+  };
+}
+
+function startDraw(e) {
+  e.preventDefault();
+  isDrawing = true;
+  const pos = getPos(e);
+  lastX = pos.x;
+  lastY = pos.y;
+
+  // Dot for tap/click
+  mainCtx.beginPath();
+  mainCtx.arc(lastX, lastY, (isErasing ? brushSize * 2 : brushSize) / 2, 0, Math.PI * 2);
+  mainCtx.fillStyle = isErasing ? '#ffffff' : brushColor;
+  mainCtx.fill();
+}
+
+function draw(e) {
+  if (!isDrawing) return;
+  e.preventDefault();
+  const pos = getPos(e);
+
+  mainCtx.beginPath();
+  mainCtx.moveTo(lastX, lastY);
+  mainCtx.lineTo(pos.x, pos.y);
+  mainCtx.strokeStyle = isErasing ? '#ffffff' : brushColor;
+  mainCtx.lineWidth   = isErasing ? brushSize * 3 : brushSize;
+  mainCtx.lineCap     = 'round';
+  mainCtx.lineJoin    = 'round';
+  mainCtx.stroke();
+
+  lastX = pos.x;
+  lastY = pos.y;
+}
+
+function endDraw(e) {
+  isDrawing = false;
+}
+
+// Attach events once DOM ready
+window.addEventListener('DOMContentLoaded', () => {
+  // We'll attach after initCanvas is called — safe via delegation
+});
+
+function bindCanvasEvents() {
+  // Mouse
+  mainCanvas.addEventListener('mousedown',  startDraw);
+  mainCanvas.addEventListener('mousemove',  draw);
+  mainCanvas.addEventListener('mouseup',    endDraw);
+  mainCanvas.addEventListener('mouseleave', endDraw);
+  // Touch (iPad)
+  mainCanvas.addEventListener('touchstart', startDraw, { passive: false });
+  mainCanvas.addEventListener('touchmove',  draw,      { passive: false });
+  mainCanvas.addEventListener('touchend',   endDraw);
+}
+
+// Bind immediately (canvas element exists in DOM)
+document.addEventListener('DOMContentLoaded', bindCanvasEvents);
+
+// ─────────────────────────────────────────────
+// GHOST LAYER
+// Shows the previous snapshot faintly under current drawing
+// ─────────────────────────────────────────────
+function updateGhost() {
+  const gCtx = ghostCanvas.getContext('2d');
+  gCtx.clearRect(0, 0, ghostCanvas.width, ghostCanvas.height);
+
+  if (snapshots.length > 0) {
+    const lastSnap = snapshots[snapshots.length - 1];
+    const img = new Image();
+    img.onload = () => {
+      gCtx.drawImage(img, 0, 0, ghostCanvas.width, ghostCanvas.height);
+    };
+    img.src = lastSnap.dataURL;
+  }
+}
+
+function toggleGhost() {
+  ghostVisible = !ghostVisible;
+  ghostCanvas.classList.toggle('visible', ghostVisible);
+  document.getElementById('ghost-toggle-btn').classList.toggle('on', ghostVisible);
+}
+
+// ─────────────────────────────────────────────
+// HISTORY STRIP
+// ─────────────────────────────────────────────
+function addThumbnail(snap) {
+  // Hide placeholder text
+  document.getElementById('history-empty').style.display = 'none';
+
+  const strip     = document.getElementById('history-strip');
+  const container = document.createElement('div');
+  container.className = 'snap-container';
+
+  const img = document.createElement('img');
+  img.className = 'snap-thumb';
+  img.src = snap.dataURL;
+  img.title = `Node ${snap.nodeNum} — ${snap.ruleName}`;
+  img.addEventListener('click', () => openLightbox(snap));
+  img.addEventListener('touchend', (e) => { e.preventDefault(); openLightbox(snap); });
+
+  const label = document.createElement('div');
+  label.className = 'snap-label';
+  label.textContent = `N${snap.nodeNum}`;
+
+  container.appendChild(img);
+  container.appendChild(label);
+  strip.appendChild(container);
+
+  // Auto-scroll to the newest
+  strip.scrollLeft = strip.scrollWidth;
+}
+
+// ─────────────────────────────────────────────
+// LIGHTBOX
+// ─────────────────────────────────────────────
+function openLightbox(snap) {
+  document.getElementById('lightbox-img').src     = snap.dataURL;
+  document.getElementById('lightbox-caption').textContent =
+    `Node ${snap.nodeNum}  •  Rule: ${snap.ruleName}`;
+  document.getElementById('lightbox').classList.add('open');
+}
+
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('open');
+}
+
+// ─────────────────────────────────────────────
+// REVIEW SCREEN
+// ─────────────────────────────────────────────
+function showReview() {
+  const grid = document.getElementById('review-grid');
+  grid.innerHTML = '';
+
+  if (snapshots.length === 0) {
+    grid.innerHTML = '<p style="color:#4a4a7a; width:100%; text-align:center;">No turns completed yet.</p>';
+  } else {
+    snapshots.forEach(snap => {
+      const card = document.createElement('div');
+      card.className = 'review-card';
+      card.innerHTML = `
+        <img src="${snap.dataURL}" alt="Node ${snap.nodeNum}">
+        <div class="review-card-label">Node ${snap.nodeNum}</div>
+        <div class="review-card-rule">${snap.ruleName}</div>
+      `;
+      card.querySelector('img').addEventListener('click', () => openLightbox(snap));
+      grid.appendChild(card);
+    });
+  }
+
+  showScreen('review-screen');
+}
+
+// ─────────────────────────────────────────────
+// RESET
+// ─────────────────────────────────────────────
+function confirmReset() {
+  // Simple confirm — no fancy modal needed for a classroom prototype
+  if (confirm('Reset the session? This will clear all drawings and history.')) {
+    resetSession();
+  }
+}
+
+function resetSession() {
+  clearInterval(timerInterval);
+  snapshots  = [];
+  nodeCount  = 0;
+  currentRule = null;
+  ghostVisible = false;
+
+  // Clear history strip
+  const strip = document.getElementById('history-strip');
+  strip.innerHTML = '<div class="history-empty" id="history-empty">Completed turns will appear here</div>';
+
+  // Clear ghost toggle
+  if (ghostCanvas) {
+    ghostCanvas.classList.remove('visible');
+    document.getElementById('ghost-toggle-btn').classList.remove('on');
+  }
+
+  showScreen('start-screen');
+}
+
+</script>
+</body>
+</html>
