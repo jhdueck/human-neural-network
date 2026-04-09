@@ -1,13 +1,7 @@
-<!DOCTYPE html>
+Put your HTML text here<!DOCTYPE html>
 <!--
   HUMAN NEURAL NETWORK — Classroom Activity App
   ================================================
-  HOW TO RUN:
-  1. Open this file in any modern browser (Chrome, Safari, Firefox)
-  2. Works on iPad (touch-enabled) and laptop
-  3. No internet connection required — fully self-contained
-  4. Pass the device between students each turn
-
   ACTIVITY FLOW:
   - Click "Start Session" to begin
   - Each student spins their rule, draws, then ends their turn
@@ -267,17 +261,26 @@
     overflow: hidden;
     background: #fff;
     cursor: crosshair;
+    display: flex;
+    align-items: stretch;
   }
 
-  #main-canvas { display: block; }
-
+  #main-canvas { 
+    display: block; 
+    position: absolute; 
+    top: 0; 
+    left: 0; 
+    z-index: 2; 
+  }
+  
   /* ─── Ghost layer toggle ─── */
-  #ghost-canvas {
+ #ghost-canvas {
     position: absolute;
     top: 0; left: 0;
     pointer-events: none;
     opacity: 0;
     transition: opacity 0.3s;
+    z-index: 1;
   }
 
   #ghost-canvas.visible { opacity: 0.18; }
@@ -712,13 +715,16 @@ function startSession() {
   nodeCount = 0;
   snapshots = [];
   showScreen('game-screen');
-  initCanvas();
-  beginNextTurn();
+  
+  // Brief delay ensures the container is rendered before we measure it
+  setTimeout(() => {
+    initCanvas();
+    beginNextTurn();
+  }, 50);
 }
 
 // ─────────────────────────────────────────────
 // CANVAS SETUP
-// Resizes canvas to fill its container
 // ─────────────────────────────────────────────
 function initCanvas() {
   mainCanvas  = document.getElementById('main-canvas');
@@ -726,22 +732,16 @@ function initCanvas() {
   ghostCanvas = document.getElementById('ghost-canvas');
   const wrap  = document.getElementById('canvas-wrap');
 
-  function resize() {
-    const w = wrap.clientWidth;
-    const h = wrap.clientHeight;
-    // Save current drawing before resize
-    const dataURL = mainCanvas.width > 0 ? mainCanvas.toDataURL() : null;
-    mainCanvas.width  = w;
-    mainCanvas.height = h;
-    ghostCanvas.width  = w;
-    ghostCanvas.height = h;
-    // Restore drawing
-    if (dataURL) {
-      const img = new Image();
-      img.onload = () => mainCtx.drawImage(img, 0, 0, w, h);
-      img.src = dataURL;
-    }
-  }
+  // Set the canvas size to match the container's actual size
+  mainCanvas.width  = wrap.offsetWidth;
+  mainCanvas.height = wrap.offsetHeight;
+  ghostCanvas.width  = wrap.offsetWidth;
+  ghostCanvas.height = wrap.offsetHeight;
+
+  // Fill white background so snapshots aren't transparent
+  mainCtx.fillStyle = "#ffffff";
+  mainCtx.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
+}
 
   resize();
   window.addEventListener('resize', resize);
@@ -964,18 +964,21 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 function bindCanvasEvents() {
-  // Mouse
-  mainCanvas.addEventListener('mousedown',  startDraw);
-  mainCanvas.addEventListener('mousemove',  draw);
-  mainCanvas.addEventListener('mouseup',    endDraw);
-  mainCanvas.addEventListener('mouseleave', endDraw);
-  // Touch (iPad)
-  mainCanvas.addEventListener('touchstart', startDraw, { passive: false });
-  mainCanvas.addEventListener('touchmove',  draw,      { passive: false });
-  mainCanvas.addEventListener('touchend',   endDraw);
+  const canvas = document.getElementById('main-canvas');
+  
+  // Mouse Events
+  canvas.addEventListener('mousedown',  startDraw);
+  canvas.addEventListener('mousemove',  draw);
+  canvas.addEventListener('mouseup',    endDraw);
+  canvas.addEventListener('mouseleave', endDraw);
+  
+  // Touch Events (iPad)
+  canvas.addEventListener('touchstart', startDraw, { passive: false });
+  canvas.addEventListener('touchmove',  draw,      { passive: false });
+  canvas.addEventListener('touchend',   endDraw);
 }
 
-// Bind immediately (canvas element exists in DOM)
+// Bind immediately when the DOM is ready
 document.addEventListener('DOMContentLoaded', bindCanvasEvents);
 
 // ─────────────────────────────────────────────
