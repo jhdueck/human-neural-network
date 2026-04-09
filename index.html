@@ -2,6 +2,12 @@ Put your HTML text here<!DOCTYPE html>
 <!--
   HUMAN NEURAL NETWORK — Classroom Activity App
   ================================================
+  HOW TO RUN:
+  1. Open this file in any modern browser (Chrome, Safari, Firefox)
+  2. Works on iPad (touch-enabled) and laptop
+  3. No internet connection required — fully self-contained
+  4. Pass the device between students each turn
+
   ACTIVITY FLOW:
   - Click "Start Session" to begin
   - Each student spins their rule, draws, then ends their turn
@@ -652,6 +658,17 @@ Put your HTML text here<!DOCTYPE html>
 <!-- ═══════════════════════════════════════════
      LIGHTBOX (snapshot viewer)
 ═══════════════════════════════════════════ -->
+<div id="review-screen-final" class="screen">
+  <div class="review-title">Network Complete!</div>
+  <p style="text-align:center; color:#9090b0;">The 6-node sequence is finished. You can now save the individual steps or the final result.</p>
+  
+  <div class="review-grid" id="final-review-grid"></div>
+
+  <div class="review-actions">
+    <button class="btn btn-success" onclick="downloadAll()">Download All Steps (.zip style)</button>
+    <button class="btn btn-primary" onclick="resetSession()">Start New Session</button>
+  </div>
+</div>
 <div id="lightbox" onclick="closeLightbox()">
   <div class="lightbox-caption" id="lightbox-caption"></div>
   <img class="lightbox-img" id="lightbox-img" src="" alt="Snapshot">
@@ -741,10 +758,7 @@ function initCanvas() {
   // Fill white background so snapshots aren't transparent
   mainCtx.fillStyle = "#ffffff";
   mainCtx.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
-}
 
-  resize();
-  window.addEventListener('resize', resize);
 }
 
 // ─────────────────────────────────────────────
@@ -785,8 +799,13 @@ function endTurn() {
   // Add thumbnail to history strip
   addThumbnail(snapshots[snapshots.length - 1]);
 
-  // Begin next turn (does NOT clear canvas — new marks are cumulative)
-  beginNextTurn();
+  // Check if we reached the limit
+  if (nodeCount >= 6) {
+    showFinalScreen();
+  } else {
+    // Begin next turn if under 6
+    beginNextTurn();
+  }
 }
 
 // ─────────────────────────────────────────────
@@ -1104,7 +1123,39 @@ function resetSession() {
 
   showScreen('start-screen');
 }
+// ─────────────────────────────────────────────
+// END OF ROUND & SAVING
+// ─────────────────────────────────────────────
+function showFinalScreen() {
+  const grid = document.getElementById('final-review-grid');
+  grid.innerHTML = '';
 
+  snapshots.forEach(snap => {
+    const card = document.createElement('div');
+    card.className = 'review-card';
+    card.innerHTML = `
+      <img src="${snap.dataURL}" alt="Node ${snap.nodeNum}">
+      <div class="review-card-label">Node ${snap.nodeNum}</div>
+      <div class="review-card-rule">${snap.ruleName}</div>
+      <a href="${snap.dataURL}" download="node-${snap.nodeNum}.png" style="color:#4a4aff; font-size:10px; text-decoration:none;">Save Image</a>
+    `;
+    grid.appendChild(card);
+  });
+
+  showScreen('review-screen-final');
+}
+
+// Simple logic to trigger downloads for all snapshots
+function downloadAll() {
+  snapshots.forEach((snap, index) => {
+    setTimeout(() => {
+      const link = document.createElement('a');
+      link.href = snap.dataURL;
+      link.download = `Neural-Network-Node-${snap.nodeNum}.png`;
+      link.click();
+    }, index * 250); // Staggered to prevent browser blocking multiple downloads
+  });
+}
 </script>
 </body>
 </html>
