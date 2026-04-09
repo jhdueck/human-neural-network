@@ -1,4 +1,4 @@
-V3<!DOCTYPE html>
+v4<!DOCTYPE html>
 <!--
   HUMAN NEURAL NETWORK — Classroom Activity App
   ================================================
@@ -532,20 +532,17 @@ V3<!DOCTYPE html>
 ═══════════════════════════════════════════ -->
 <div id="start-screen" class="screen active">
   <div class="app-title">Human<br>Neural Network</div>
-  <p class="app-subtitle">A classroom drawing activity where each student transforms a shared image — one rule at a time.</p>
+  <p class="app-subtitle">A classroom drawing activity where each student transforms a shared image.</p>
 
-  <div class="network-graphic">
-    <div class="node-dot">N1</div>
-    <div class="node-arrow">→</div>
-    <div class="node-dot">N2</div>
-    <div class="node-arrow">→</div>
-    <div class="node-dot">N3</div>
-    <div class="node-arrow">→</div>
-    <div class="node-dot">N4</div>
+  <div id="seed-zone" style="background: #16213e; padding: 20px; border-radius: 15px; border: 2px dashed #4a4aff; margin: 20px 0; min-width: 300px;">
+    <div style="font-size: 0.8rem; color: #9090b0; margin-bottom: 10px;">INITIAL INPUT SIGNAL</div>
+    <div id="seed-text" style="font-size: 1.5rem; font-weight: 700; color: #fff; margin-bottom: 15px;">???</div>
+    <div id="spin-count-text" style="font-size: 0.8rem; color: #4a4aff; margin-bottom: 15px;">3 spins remaining</div>
+    <button class="btn btn-spin" id="seed-spin-btn" onclick="spinSeed()">Spin for Input</button>
   </div>
 
-  <button class="btn btn-primary" onclick="startSession()">Start Session</button>
-
+  <button class="btn btn-primary" id="final-start-btn" onclick="startSession()" style="display:none;">Begin Processing →</button>
+</div>
   <p style="color: #3a3a6a; font-size: 0.8rem; max-width: 360px;">
     Pass the device between students. Each student spins a rule, draws for 60 seconds, then ends their turn.
   </p>
@@ -578,6 +575,10 @@ V3<!DOCTYPE html>
   <!-- Rule zone -->
   <div class="rule-zone">
     <div>
+        <div style="border-bottom: 1px solid #2a2a4a; padding-bottom: 5px; margin-bottom: 5px;">
+  <span style="font-size: 0.7rem; color: #4affb8; font-weight: 800;">MISSION: </span>
+  <span id="active-seed-display" style="font-size: 0.8rem; color: #fff; text-transform: uppercase; letter-spacing: 1px;"></span>
+</div>
       <div class="rule-label">Your Rule</div>
     </div>
     <div style="flex:1;">
@@ -685,6 +686,15 @@ V3<!DOCTYPE html>
 // RULES DATA
 // Each rule has a short name and a one-line prompt
 // ─────────────────────────────────────────────
+const SEEDS = [
+  "Microscopic Organism", "Deep Sea Creature", "Ancient Fossil", "Overgrown Ruins", "Fungal Colony", "Celestial Nebula",
+  "Clockwork Engine", "Circuit Board", "Brutalist Architecture", "Space Satellite", "Submarine Interior", "Cybernetic Limb",
+  "Fragmented Memory", "Electric Storm", "Liquid Gravity", "Shattered Mirror", "Sound Waves", "Digital Glitch",
+  "Nomadic Shelter", "Carnival Mask", "Urban Skyline", "Deep Space Voyager", "Mythological Beast", "Lost Map"
+];
+
+let spinsLeft = 3;
+let selectedSeed = "";
 const RULES = [
   { name: "ADD",         desc: "Add a new element to the drawing." },
   { name: "REMOVE",      desc: "Erase or obscure something that exists." },
@@ -728,11 +738,50 @@ function showScreen(id) {
 // ─────────────────────────────────────────────
 // SESSION START
 // ─────────────────────────────────────────────
+function spinSeed() {
+  if (spinsLeft <= 0) return;
+
+  const btn = document.getElementById('seed-spin-btn');
+  const text = document.getElementById('seed-text');
+  const countText = document.getElementById('spin-count-text');
+  const startBtn = document.getElementById('final-start-btn');
+
+  btn.disabled = true;
+  spinsLeft--;
+
+  // Shuffle animation
+  let ticks = 0;
+  const interval = setInterval(() => {
+    text.textContent = SEEDS[Math.floor(Math.random() * SEEDS.length)];
+    ticks++;
+    if (ticks > 10) {
+      clearInterval(interval);
+      selectedSeed = SEEDS[Math.floor(Math.random() * SEEDS.length)];
+      text.textContent = selectedSeed;
+      
+      // Update count text
+      if (spinsLeft === 2) countText.textContent = "2 spins remaining";
+      else if (spinsLeft === 1) countText.textContent = "Final spin remaining!";
+      else countText.textContent = "Input Finalized";
+
+      // Show the actual start button
+      startBtn.style.display = "inline-block";
+
+      if (spinsLeft > 0) {
+        btn.disabled = false;
+        btn.textContent = "Spin Again?";
+      } else {
+        btn.style.display = "none";
+      }
+    }
+  }, 50);
+}
 function startSession() {
   nodeCount = 0;
   snapshots = [];
   showScreen('game-screen');
-  
+  // Inside startSession()
+document.getElementById('active-seed-display').textContent = selectedSeed;
   // Brief delay ensures the container is rendered before we measure it
   setTimeout(() => {
     initCanvas();
@@ -1147,14 +1196,21 @@ function showFinalScreen() {
 
 // Simple logic to trigger downloads for all snapshots
 function downloadAll() {
+  // Replace spaces with dashes for a cleaner filename
+  const folderName = selectedSeed.replace(/\s+/g, '-').toLowerCase();
+
   snapshots.forEach((snap, index) => {
     setTimeout(() => {
       const link = document.createElement('a');
       link.href = snap.dataURL;
-      link.download = `Neural-Network-Node-${snap.nodeNum}.png`;
+      
+      // Filename will now look like: "fungal-colony-node-1.png"
+      link.download = `${folderName}-node-${snap.nodeNum}.png`;
+      
       link.click();
-    }, index * 250); // Staggered to prevent browser blocking multiple downloads
+    }, index * 250); 
   });
+
 }
 </script>
 </body>
