@@ -1,4 +1,4 @@
-v4<!DOCTYPE html>
+v5<!DOCTYPE html>
 <!--
   HUMAN NEURAL NETWORK — Classroom Activity App
   ================================================
@@ -532,8 +532,7 @@ v4<!DOCTYPE html>
 ═══════════════════════════════════════════ -->
 <div id="start-screen" class="screen active">
   <div class="app-title">Human<br>Neural Network</div>
-  <p class="app-subtitle">A classroom drawing activity where each student transforms a shared image.</p>
-
+  
   <div id="seed-zone" style="background: #16213e; padding: 20px; border-radius: 15px; border: 2px dashed #4a4aff; margin: 20px 0; min-width: 300px;">
     <div style="font-size: 0.8rem; color: #9090b0; margin-bottom: 10px;">INITIAL INPUT SIGNAL</div>
     <div id="seed-text" style="font-size: 1.5rem; font-weight: 700; color: #fff; margin-bottom: 15px;">???</div>
@@ -541,11 +540,23 @@ v4<!DOCTYPE html>
     <button class="btn btn-spin" id="seed-spin-btn" onclick="spinSeed()">Spin for Input</button>
   </div>
 
-  <button class="btn btn-primary" id="final-start-btn" onclick="startSession()" style="display:none;">Begin Processing →</button>
-</div>
-  <p style="color: #3a3a6a; font-size: 0.8rem; max-width: 360px;">
-    Pass the device between students. Each student spins a rule, draws for 60 seconds, then ends their turn.
-  </p>
+  <div style="display: flex; flex-direction: column; align-items: center; gap: 15px; text-align: center;">
+    <p style="color: #ffffff; font-size: 1.2rem; max-width: 550px; line-height: 1.4; font-weight: 500;">
+      Pass the device between students. <br>
+      Each Node has 60 seconds to transform the data.
+    </p>
+
+    <div style="background: rgba(74, 74, 255, 0.1); border: 1px solid #4a4aff; padding: 12px 20px; border-radius: 10px; max-width: 450px;">
+      <p style="color: #4affb8; font-size: 0.9rem; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 1px;">
+        Rule: Silent Processing
+      </p>
+      <p style="color: #9090b0; font-size: 0.85rem; margin: 0;">
+        No talking! The next student must "read" the drawing without any help. Let the image be the only signal.
+      </p>
+    </div>
+
+    <button class="btn btn-primary" id="final-start-btn" onclick="startSession()" style="display:none; margin-top: 10px;">Begin Processing →</button>
+  </div>
 </div>
 
 <!-- ═══════════════════════════════════════════
@@ -642,6 +653,18 @@ v4<!DOCTYPE html>
   </div>
 </div>
 
+<div id="rules-reference-screen" class="screen" style="padding: 2rem; overflow-y: auto;">
+  <div class="review-title" style="text-align:center; margin-bottom:10px;">The Transformation Rules</div>
+  <p style="text-align:center; color:#9090b0; margin-bottom: 2rem;">As a Node in the network, you will be assigned one of these instructions at random.</p>
+  
+ <div id="rules-list-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; max-width: 1000px; margin: 0 auto; padding-bottom: 20px;">
+  </div>
+
+  <div class="review-actions" style="margin-top: 2rem; justify-content: center; display: flex;">
+    <button class="btn btn-primary" onclick="proceedToDrawing()">I Understand - Start Node 1 →</button>
+  </div>
+</div>
+
 <!-- ═══════════════════════════════════════════
      SCREEN 3: REVIEW / GALLERY
 ═══════════════════════════════════════════ -->
@@ -711,6 +734,7 @@ const RULES = [
 // ─────────────────────────────────────────────
 // STATE
 // ─────────────────────────────────────────────
+let shuffledRules = [];
 let nodeCount     = 0;         // how many turns completed
 let currentRule   = null;      // currently spun rule object
 let snapshots     = [];        // array of { dataURL, nodeNum, ruleName }
@@ -776,13 +800,46 @@ function spinSeed() {
     }
   }, 50);
 }
+// ─────────────────────────────────────────────
+// SESSION START (Goes to Rules Page First)
+// ─────────────────────────────────────────────
 function startSession() {
   nodeCount = 0;
   snapshots = [];
+  
+  // 1. Shuffle the rules for the session
+  shuffledRules = [...RULES].sort(() => Math.random() - 0.5);
+
+  // 2. Populate the Rules Reference Grid automatically
+  const grid = document.getElementById('rules-list-grid');
+  if (grid) {
+    grid.innerHTML = `
+      <div style="grid-column: span 3; background: #16213e; padding: 15px; border-radius: 8px; color: #4affb8; font-size: 0.9rem; font-weight: 800; text-align: center; margin-bottom: 10px; border: 1px solid #4a4aff;">
+        SYSTEM PROTOCOL: NO VERBAL COMMUNICATION BETWEEN NODES
+      </div>
+    ` + RULES.map(r => `
+      <div style="background:#12122a; border:1px solid #2a2a4a; padding:12px; border-radius:10px; text-align:left; display: flex; flex-direction: column; justify-content: center;">
+        <div style="color:#4a4aff; font-weight:bold; font-size: 0.9rem; margin-bottom:4px;">${r.name}</div>
+        <div style="font-size:0.75rem; color:#8080aa; line-height: 1.2;">${r.desc}</div>
+      </div>
+    `).join('');
+  }
+
+  // 3. Update the persistent mission display
+  const missionEl = document.getElementById('active-seed-display');
+  if (missionEl) missionEl.textContent = selectedSeed;
+
+  // 4. Move to the reference screen
+  showScreen('rules-reference-screen');
+}
+
+// ─────────────────────────────────────────────
+// PROCEED TO DRAWING (The actual game start)
+// ─────────────────────────────────────────────
+function proceedToDrawing() {
   showScreen('game-screen');
-  // Inside startSession()
-document.getElementById('active-seed-display').textContent = selectedSeed;
-  // Brief delay ensures the container is rendered before we measure it
+  
+  // Brief delay ensures the container is rendered before measurement
   setTimeout(() => {
     initCanvas();
     beginNextTurn();
@@ -861,6 +918,14 @@ function endTurn() {
 // RULE SPINNER
 // ─────────────────────────────────────────────
 function spinRule() {
+  // NEW: If they already had a rule and are re-spinning, 
+  // put the old rule back into the deck so it's not lost!
+  if (currentRule) {
+    shuffledRules.push(currentRule);
+    // Re-shuffle slightly so they don't just get the same one back immediately
+    shuffledRules.sort(() => Math.random() - 0.5);
+  }
+
   const btn = document.getElementById('spin-btn');
   btn.disabled = true;
   btn.textContent = '...';
@@ -880,14 +945,24 @@ function spinRule() {
     if (ticks >= maxTicks) {
       clearInterval(shuffleInterval);
 
-      // Final selection
-      currentRule = RULES[Math.floor(Math.random() * RULES.length)];
+    // Find the section where the shuffle animation ends:
+if (ticks >= maxTicks) {
+  clearInterval(shuffleInterval);
+
+  // NEW LOGIC: Take the next rule from our shuffled deck
+  currentRule = shuffledRules.pop(); 
+
+  // If we run out of rules (though we have 10 rules and only 6 nodes)
+  if (!currentRule) {
+      ruleTextEl.textContent = "PROCESS";
+      ruleDescEl.textContent = "Keep transforming the data.";
+  } else {
       ruleTextEl.textContent = currentRule.name;
       ruleDescEl.textContent = currentRule.desc;
-      ruleTextEl.classList.remove('spinning');
-      void ruleTextEl.offsetWidth; // force reflow
-      ruleTextEl.classList.add('spinning');
+  }
 
+  // ... (rest of your existing color-coding and timer logic)
+}
       // Color code by rule type
       const colors = {
         'ADD': '#4aff98', 'REMOVE': '#ff6b6b', 'ENLARGE': '#ffd94a',
