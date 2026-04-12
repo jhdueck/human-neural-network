@@ -524,6 +524,7 @@ v5<!DOCTYPE html>
     .rule-text { font-size: 1rem; }
   }
 </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
 
@@ -1270,22 +1271,41 @@ function showFinalScreen() {
 }
 
 // Simple logic to trigger downloads for all snapshots
-function downloadAll() {
-  // Replace spaces with dashes for a cleaner filename
-  const folderName = selectedSeed.replace(/\s+/g, '-').toLowerCase();
+async function downloadAll() {
+  // Check if library loaded
+  if (typeof JSZip === 'undefined') {
+    alert("Download library still loading or unavailable. Please try again in a moment.");
+    return;
+  }
 
-  snapshots.forEach((snap, index) => {
-    setTimeout(() => {
-      const link = document.createElement('a');
-      link.href = snap.dataURL;
-      
-      // Filename will now look like: "fungal-colony-node-1.png"
-      link.download = `${folderName}-node-${snap.nodeNum}.png`;
-      
-      link.click();
-    }, index * 250); 
+  const zip = new JSZip();
+  // Create a safe filename from the mission title
+  const folderName = (selectedSeed || "network-output").replace(/\s+/g, '-').toLowerCase();
+  
+  // 1. Add each snapshot to the zip file
+  snapshots.forEach((snap) => {
+    // We strip the "data:image/png;base64," part to get raw data for the zip
+    const imgData = snap.dataURL.split(',')[1];
+    zip.file(`${folderName}-node-${snap.nodeNum}.png`, imgData, {base64: true});
   });
 
+  try {
+    // 2. Generate the zip file content
+    const content = await zip.generateAsync({type: "blob"});
+    
+    // 3. Create a single download link
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(content);
+    link.download = `${folderName}-complete-sequence.zip`;
+    
+    // 4. Trigger the click and clean up
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } catch (err) {
+    console.error("Zip generation failed:", err);
+    alert("Could not create ZIP file. Please save images individually.");
+  }
 }
 </script>
 </body>
