@@ -883,12 +883,37 @@ function beginNextTurn() {
   document.getElementById('rule-text').style.color   = '#3a3a6a';
   document.getElementById('rule-desc').textContent   = '';
   document.getElementById('spin-btn').disabled       = false;
+  document.getElementById('spin-btn').style.display  = 'inline-block';
 
   // Reset timer
   resetTimer();
 
   // Ghost: load last snapshot
   updateGhost();
+
+  // NEW: Auto-start for Node 1
+  if (nodeCount === 1) {
+    autoStartNodeOne();
+  }
+}
+
+  function autoStartNodeOne() {
+  const ruleTextEl = document.getElementById('rule-text');
+  const ruleDescEl = document.getElementById('rule-desc');
+  const btn = document.getElementById('spin-btn');
+
+  // Set the "Rule" to be the Mission Prompt
+  currentRule = { name: selectedSeed, desc: "Create the initial input for the network." };
+  
+  ruleTextEl.textContent = currentRule.name;
+  ruleTextEl.style.color = '#4affb8'; // Use a distinct "Input" color
+  ruleDescEl.textContent = currentRule.desc;
+  
+  // Hide or disable the spin button for Node 1 since they don't need it
+  btn.style.display = 'none';
+
+  // Start the clock immediately
+  startTimer();
 }
 
 function endTurn() {
@@ -919,11 +944,13 @@ function endTurn() {
 // RULE SPINNER
 // ─────────────────────────────────────────────
 function spinRule() {
-  // NEW: If they already had a rule and are re-spinning, 
-  // put the old rule back into the deck so it's not lost!
-  if (currentRule) {
+  // If it's Node 1, they shouldn't be spinning anyway, but this prevents errors
+  if (nodeCount === 1) return; 
+
+  // NEW SAFETY: Only put the rule back if it's a REAL rule (from the deck)
+  // and not the "Mission Prompt" from Node 1
+  if (currentRule && nodeCount > 1) {
     shuffledRules.push(currentRule);
-    // Re-shuffle slightly so they don't just get the same one back immediately
     shuffledRules.sort(() => Math.random() - 0.5);
   }
 
